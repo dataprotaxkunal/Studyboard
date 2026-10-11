@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class Topic(val id: String, var name: String, var status: Int = 0, var lec: Boolean = false, var self: Boolean = false, var prac: Boolean = false, var rev: Boolean = false)
+data class Topic(val id: String, var name: String, var status: Int = 0, var lec: Boolean = false, var self: Boolean = false, var prac: Boolean = false, var rev: Boolean = false, var diff: Int = 2, var conf: Int = 2, var note: String = "")
 data class Chapter(val id: String, var name: String, val topics: MutableList<Topic> = mutableListOf())
 data class Subject(val id: String, var name: String, val chapters: MutableList<Chapter> = mutableListOf())
 
@@ -19,7 +19,7 @@ object Syl {
                 val ch = ca.getJSONObject(j); val ta = ch.getJSONArray("t")
                 Chapter(ch.getString("id"), ch.getString("n"), MutableList(ta.length()) { k ->
                     val t = ta.getJSONObject(k)
-                    Topic(t.getString("id"), t.getString("n"), t.getInt("s"), t.getBoolean("l"), t.getBoolean("f"), t.getBoolean("p"), t.getBoolean("r"))
+                    Topic(t.getString("id"), t.getString("n"), t.getInt("s"), t.getBoolean("l"), t.getBoolean("f"), t.getBoolean("p"), t.getBoolean("r"), t.optInt("d", 2), t.optInt("q", 2), t.optString("m", ""))
                 })
             })
         }
@@ -30,7 +30,7 @@ object Syl {
             val ca = JSONArray()
             s.chapters.forEach { ch ->
                 val ta = JSONArray()
-                ch.topics.forEach { t -> ta.put(JSONObject().put("id", t.id).put("n", t.name).put("s", t.status).put("l", t.lec).put("f", t.self).put("p", t.prac).put("r", t.rev)) }
+                ch.topics.forEach { t -> ta.put(JSONObject().put("id", t.id).put("n", t.name).put("s", t.status).put("l", t.lec).put("f", t.self).put("p", t.prac).put("r", t.rev).put("d", t.diff).put("q", t.conf).put("m", t.note)) }
                 ca.put(JSONObject().put("id", ch.id).put("n", ch.name).put("t", ta))
             }
             a.put(JSONObject().put("id", s.id).put("n", s.name).put("c", ca))
@@ -55,5 +55,19 @@ object TimerStore {
         val e = p(c).edit()
         if (t == null) e.remove("timer") else e.putString("timer", JSONObject().put("sub", t.subject).put("run", t.runningSince).put("acc", t.accrued).toString())
         e.apply()
+    }
+}
+
+/** Exam setup: course, level, group, attempt, exam date (millis, 0 = not set) and daily target in hours. */
+data class Profile(val course: String = "CA", val level: String = "Intermediate", val group: String = "Group 1", val attempt: String = "", val examDate: Long = 0L, val target: Float = 6f)
+object ProfStore {
+    private fun p(c: Context) = c.getSharedPreferences("study", Context.MODE_PRIVATE)
+    fun get(c: Context): Profile {
+        val s = p(c).getString("profile", null) ?: return Profile()
+        val o = JSONObject(s)
+        return Profile(o.optString("course", "CA"), o.optString("level", "Intermediate"), o.optString("group", "Group 1"), o.optString("attempt", ""), o.optLong("date", 0L), o.optDouble("target", 6.0).toFloat())
+    }
+    fun set(c: Context, x: Profile) {
+        p(c).edit().putString("profile", JSONObject().put("course", x.course).put("level", x.level).put("group", x.group).put("attempt", x.attempt).put("date", x.examDate).put("target", x.target.toDouble()).toString()).apply()
     }
 }

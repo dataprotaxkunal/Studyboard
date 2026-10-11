@@ -40,8 +40,27 @@ object Store {
     fun log(c: Context) = JSONObject(p(c).getString("log", "{}"))
     fun addStudied(c: Context, subject: String, min: Int) {
         val o = log(c); o.put(subject, o.optInt(subject) + min)
-        val a = JSONArray(p(c).getString("logs", "[]")); a.put(JSONObject().put("t", System.currentTimeMillis()).put("m", min))
+        val a = JSONArray(p(c).getString("logs", "[]")); a.put(JSONObject().put("t", System.currentTimeMillis()).put("m", min).put("s", subject))
         p(c).edit().putString("log", o.toString()).putString("logs", a.toString()).apply()
+    }
+    data class Entry(val idx: Int, val t: Long, val m: Int, val s: String)
+    fun recent(c: Context, n: Int): List<Entry> {
+        val a = JSONArray(p(c).getString("logs", "[]"))
+        return (0 until a.length()).map { val x = a.getJSONObject(it); Entry(it, x.getLong("t"), x.getInt("m"), x.optString("s", "")) }.reversed().take(n)
+    }
+    fun deleteEntry(c: Context, idx: Int) {
+        val a = JSONArray(p(c).getString("logs", "[]")); if (idx !in 0 until a.length()) return
+        val x = a.getJSONObject(idx); val o = log(c); val s = x.optString("s", "")
+        if (s.isNotEmpty()) o.put(s, maxOf(0, o.optInt(s) - x.getInt("m")))
+        val b = JSONArray(); for (i in 0 until a.length()) if (i != idx) b.put(a.get(i))
+        p(c).edit().putString("log", o.toString()).putString("logs", b.toString()).apply()
+    }
+    fun streak(c: Context): Int {
+        val a = JSONArray(p(c).getString("logs", "[]")); val days = HashSet<Long>()
+        fun d(t: Long) = (t + java.util.TimeZone.getDefault().getOffset(t)) / 86400000L
+        for (i in 0 until a.length()) days.add(d(a.getJSONObject(i).getLong("t")))
+        var day = d(System.currentTimeMillis()); if (day !in days) day -= 1
+        var n = 0; while (day in days) { n++; day-- }; return n
     }
     fun minutesSince(c: Context, from: Long): Int {
         val a = JSONArray(p(c).getString("logs", "[]")); var s = 0
