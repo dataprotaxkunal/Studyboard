@@ -40,7 +40,13 @@ object Store {
     fun log(c: Context) = JSONObject(p(c).getString("log", "{}"))
     fun addStudied(c: Context, subject: String, min: Int) {
         val o = log(c); o.put(subject, o.optInt(subject) + min)
-        p(c).edit().putString("log", o.toString()).apply()
+        val a = JSONArray(p(c).getString("logs", "[]")); a.put(JSONObject().put("t", System.currentTimeMillis()).put("m", min))
+        p(c).edit().putString("log", o.toString()).putString("logs", a.toString()).apply()
+    }
+    fun minutesSince(c: Context, from: Long): Int {
+        val a = JSONArray(p(c).getString("logs", "[]")); var s = 0
+        for (i in 0 until a.length()) { val x = a.getJSONObject(i); if (x.getLong("t") >= from) s += x.getInt("m") }
+        return s
     }
     fun totalMin(c: Context): Int { val o = log(c); var s = 0; o.keys().forEach { s += o.getInt(it) }; return s }
     fun flag(c: Context, k: String) = p(c).getBoolean(k, false)
@@ -86,6 +92,7 @@ object Notifier {
         ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         nm.createNotificationChannel(ch)
         nm.createNotificationChannel(NotificationChannel(INFO, "Study info", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel("study_timer", "Study timer", NotificationManager.IMPORTANCE_LOW))
     }
     private fun builder(c: Context, ch: String) =
         if (Build.VERSION.SDK_INT >= 26) Notification.Builder(c, ch) else Notification.Builder(c)
@@ -113,6 +120,19 @@ object Notifier {
         val n = b.build()
         n.flags = n.flags or Notification.FLAG_INSISTENT
         c.getSystemService(NotificationManager::class.java).notify(nid, n)
+    }
+    /** Ongoing notification showing the running study time (also visible on the lock screen). */
+    fun timer(c: Context, t: TimerState?) {
+        val nm = c.getSystemService(NotificationManager::class.java)
+        if (t == null) { nm.cancel(7); return }
+        channels(c)
+        val open = PendingIntent.getActivity(c, 7, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val b = builder(c, "study_timer").setSmallIcon(android.R.drawable.ic_menu_recent_history)
+            .setContentTitle("Studying: ${t.subject}").setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+        if (t.runningSince > 0) b.setUsesChronometer(true).setShowWhen(true).setWhen(System.currentTimeMillis() - t.elapsed()).setContentText("Timer running")
+        else b.setContentText("Paused at ${fmt((t.elapsed() / 60000).toInt())}")
+        nm.notify(7, b.build())
     }
     fun info(c: Context, nid: Int, title: String, text: String) {
         channels(c)
