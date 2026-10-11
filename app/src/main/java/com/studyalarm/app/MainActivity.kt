@@ -58,11 +58,11 @@ class AppState(val c: Context) {
     }
     fun deleteAlarm(id: Int) { Scheduler.cancel(c, id); val l = Store.load(c); l.removeAll { it.id == id }; Store.save(c, l); reload() }
     // timer
-    private fun setTimer(t: TimerState?) { TimerStore.set(c, t); Notifier.timer(c, t); timer = t; ver++ }
-    fun startTimer(sub: String) = setTimer(TimerState(sub, System.currentTimeMillis(), 0L))
-    fun pauseTimer() { val t = timer ?: return; if (t.runningSince > 0) setTimer(TimerState(t.subject, 0L, t.elapsed())) }
-    fun resumeTimer() { val t = timer ?: return; if (t.runningSince == 0L) setTimer(TimerState(t.subject, System.currentTimeMillis(), t.accrued)) }
-    fun stopTimer() { val t = timer ?: return; val min = (t.elapsed() / 60000.0).roundToInt(); if (min >= 1) Store.addStudied(c, t.subject, min); setTimer(null) }
+    private fun applyTimer(t: TimerState?) { TimerStore.set(c, t); Notifier.timer(c, t); timer = t; ver++ }
+    fun startTimer(sub: String) = applyTimer(TimerState(sub, System.currentTimeMillis(), 0L))
+    fun pauseTimer() { val t = timer ?: return; if (t.runningSince > 0) applyTimer(TimerState(t.subject, 0L, t.elapsed())) }
+    fun resumeTimer() { val t = timer ?: return; if (t.runningSince == 0L) applyTimer(TimerState(t.subject, System.currentTimeMillis(), t.accrued)) }
+    fun stopTimer() { val t = timer ?: return; val min = (t.elapsed() / 60000.0).roundToInt(); if (min >= 1) Store.addStudied(c, t.subject, min); applyTimer(null) }
     // syllabus
     fun saveSyl() { Syl.save(c, syl); ver++ }
     fun addSubject(n: String) { syl.add(Subject(uid(), n)); saveSyl() }
