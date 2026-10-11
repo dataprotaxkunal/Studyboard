@@ -214,7 +214,7 @@ fun SyllabusScreen(app: AppState) {
     var ask by remember { mutableStateOf<Pair<String, (String) -> Unit>?>(null) }
     fun tog(k: String) { open = if (k in open) open - k else open + k }
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Button({ ask = "Subject name" to { n -> app.addSubject(n) } }, Modifier.fillMaxWidth()) { Text("+ Add subject") } }
+        item { Button({ ask = "Subject name" to { n: String -> app.addSubject(n) } }, Modifier.fillMaxWidth()) { Text("+ Add subject") } }
         if (app.syl.isEmpty()) item { Text("Add a subject, then chapters and topics. For each topic you can track lecture, self-study, practice and revision separately.") }
         items(app.syl, key = { it.id }) { su ->
             val sp = Syl.pct(Syl.topics(su))
@@ -229,11 +229,11 @@ fun SyllabusScreen(app: AppState) {
                             LinearProgressIndicator(progress = { cp }, modifier = Modifier.fillMaxWidth())
                             if (ch.id in open) {
                                 ch.topics.forEach { tp -> TopicRow(app, tp) }
-                                TextButton({ ask = "Topic name" to { n -> app.addTopic(ch.id, n) } }) { Text("+ Topic") }
+                                TextButton({ ask = "Topic name" to { n: String -> app.addTopic(ch.id, n) } }) { Text("+ Topic") }
                             }
                         }
                     }
-                    TextButton({ ask = "Chapter name" to { n -> app.addChapter(su.id, n) } }) { Text("+ Chapter") }
+                    TextButton({ ask = "Chapter name" to { n: String -> app.addChapter(su.id, n) } }) { Text("+ Chapter") }
                 }
             }
         }
